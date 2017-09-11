@@ -67,7 +67,8 @@ function Write-Log{
 function RemoveInvalidEventReceivers([string]$startSPSiteUrl, [string]$AssemblyName, [switch]$ReportOnly)
 {
 Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers() begin... $startSPSiteUrl, ReportOnly=$ReportOnly"
-    $sites = @(Get-SPWebApplication -IncludeCentralAdministration | Get-SPSite -Limit ALL | ?{$_.Url.Startswith($startSPSiteUrl, "CurrentCultureIgnoreCase")})
+    $sites = @(Get-SPWebApplication -IncludeCentralAdministration | Get-SPSite -Limit ALL | ?{$_.Url.Startswith($startSPSiteUrl, "CurrentCultureIgnoreCase") `
+        -and $_.Url -notmatch "mysite"})
     $SiteCount = $sites.count
     $progressBarTitle = "RemoveInvalidEventReceivers(), SiteCount=$SiteCount, startSPSiteUrl=$startSPSiteUrl"
     $i = 0
@@ -77,6 +78,8 @@ Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers(
 		Write-Progress -Activity "$progressBarTitle" -PercentComplete (($i/$SiteCount)*100) -Status "Working"
 
 		try{
+            Write-Log "$i, $($site.Url)"
+
 			$evenReceiverIds = @($site.EventReceivers | ?{ $_.Assembly -eq $AssemblyName })
 			if ($evenReceiverIds.Count -gt 0){
 				$count += $evenReceiverIds.Count
@@ -157,8 +160,8 @@ Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers(
 # $_AssemblyName = "Microsoft.AnalysisServices.SPAddin"
 # $_AssemblyName = "Microsoft.AnalysisServices.SharePoint.Integration, Version=10.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
 
-$_AssemblyName = "Microsoft.AnalysisServices.SPAddin.ConnectionUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
-# $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.LoadUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+# $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.ConnectionUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+$_AssemblyName = "Microsoft.AnalysisServices.SPAddin.LoadUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
 # $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.UnloadUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
 # $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.RequestUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
 
