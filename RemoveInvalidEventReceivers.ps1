@@ -67,7 +67,7 @@ function Write-Log{
 function RemoveInvalidEventReceivers([string]$startSPSiteUrl, [string]$AssemblyName, [switch]$ReportOnly)
 {
 Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers() begin... $startSPSiteUrl, ReportOnly=$ReportOnly"
-    $sites = @(Get-SPWebApplication -IncludeCentralAdministration | Get-SPSite -Limit ALL | ?{$_.ServerRelativeUrl -notmatch "Office_Viewing_Service_Cache"})
+    $sites = @(Get-SPWebApplication -IncludeCentralAdministration | Get-SPSite -Limit ALL | ?{$_.Url.Startswith($startSPSiteUrl, "CurrentCultureIgnoreCase")})
     $SiteCount = $sites.count
     $progressBarTitle = "RemoveInvalidEventReceivers(), SiteCount=$SiteCount, startSPSiteUrl=$startSPSiteUrl"
     $i = 0
@@ -77,17 +77,17 @@ Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers(
 		Write-Progress -Activity "$progressBarTitle" -PercentComplete (($i/$SiteCount)*100) -Status "Working"
 
 		try{
-			$evenReceiverIds = @($site.EventReceivers | ?{ $_.Assembly -like "*$AssemblyName*" })
+			$evenReceiverIds = @($site.EventReceivers | ?{ $_.Assembly -eq $AssemblyName })
 			if ($evenReceiverIds.Count -gt 0){
 				$count += $evenReceiverIds.Count
 			}
 			$evenReceiverIds | %{
 				$er = $site.EventReceivers[$_.ID]
 				if ($ReportOnly){
-					Write-Log "site level: '$($er.Assembly)', $($er.Class), $($er.Type)" -Level HighLight
+					Write-Log "site level: '$($er.Assembly)', $($er.Class), $($er.Type), $($site.Url)" -Level HighLight
 				}
 				else{
-					Write-Log "Deleting site level: '$($er.Assembly)', $($er.Class), $($er.Type)" -Level HighLight
+					Write-Log "Deleting site level: '$($er.Assembly)', $($er.Class), $($er.Type), $($site.Url)" -Level HighLight
 					$er.Delete()
 					Write-Log "Deleted"
 				}
@@ -96,17 +96,17 @@ Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers(
 			
 			foreach($web in $site.AllWebs){
 				foreach($ct in $web.ContentTypes){
-					$evenReceiverIds = @($ct.EventReceivers | ?{ $_.Assembly -like "*$AssemblyName*" })
+					$evenReceiverIds = @($ct.EventReceivers | ?{ $_.Assembly -eq $AssemblyName })
 					if ($evenReceiverIds.Count -gt 0){
 						$count += $evenReceiverIds.Count
 					}
 					$evenReceiverIds | %{
 						$er = $ct.EventReceivers[$_.ID]
 						if ($ReportOnly){
-							Write-Log "site Content Type level: '$($er.Assembly)', $($er.Class), $($er.Type)" -Level HighLight
+							Write-Log "site Content Type level: '$($er.Assembly)', $($er.Class), $($er.Type), $($web.Url), $($ct.Name)" -Level HighLight
 						}
 						else{
-							Write-Log "Deleting site Content Type level: '$($er.Assembly)', $($er.Class), $($er.Type)" -Level HighLight
+							Write-Log "Deleting site Content Type level: '$($er.Assembly)', $($er.Class), $($er.Type), $($web.Url), $($ct.Name)" -Level HighLight
 							$er.Delete()
 							Write-Log "Deleted"
 						}
@@ -119,17 +119,17 @@ Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers(
 			
 			foreach($web in $site.AllWebs){
 				foreach($list in $web.Lists){
-					$evenReceiverIds = @($list.EventReceivers | ?{ $_.Assembly -like "*$AssemblyName*" })
+					$evenReceiverIds = @($list.EventReceivers | ?{ $_.Assembly -eq $AssemblyName })
 					if ($evenReceiverIds.Count -gt 0){
 						$count += $evenReceiverIds.Count
 					}
 					$evenReceiverIds | %{
 						$er = $list.EventReceivers[$_.ID]
 						if ($ReportOnly){
-							Write-Log "list level: '$($er.Assembly)', $($er.Class), $($er.Type)" -Level HighLight
+							Write-Log "list level: '$($er.Assembly)', $($er.Class), $($er.Type), $($web.Url), $($list.Title)" -Level HighLight
 						}
 						else{
-							Write-Log "Deleting list level: '$($er.Assembly)', $($er.Class), $($er.Type)" -Level HighLight
+							Write-Log "Deleting list level: '$($er.Assembly)', $($er.Class), $($er.Type), $($web.Url), $($list.Title)" -Level HighLight
 							$er.Delete()
 							Write-Log "Deleted"
 						}
@@ -154,8 +154,21 @@ Write-Log "$(get-date -UFormat '%Y%m%d %H:%M:%S') - RemoveInvalidEventReceivers(
     }
 }
 
-$_AssemblyName = "Microsoft.AnalysisServices.SPAddin"
-RemoveInvalidEventReceivers "" $_AssemblyName
+# $_AssemblyName = "Microsoft.AnalysisServices.SPAddin"
+# $_AssemblyName = "Microsoft.AnalysisServices.SharePoint.Integration, Version=10.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+
+$_AssemblyName = "Microsoft.AnalysisServices.SPAddin.ConnectionUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+# $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.LoadUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+# $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.UnloadUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+# $_AssemblyName = "Microsoft.AnalysisServices.SPAddin.RequestUsageDefinition, Microsoft.AnalysisServices.SPAddin, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+
+RemoveInvalidEventReceivers "" $_AssemblyName -ReportOnly
+# RemoveInvalidEventReceivers "http://apps.unitingcare.local/sites/HRRecords" $_AssemblyName
+# RemoveInvalidEventReceivers "http://sptest.unitingcare.local/sites/HRRecords" $_AssemblyName
+
+# RemoveInvalidEventReceivers "http://apps.unitingcare.local/sites/HRRecords" $_AssemblyName -ReportOnly
+# RemoveInvalidEventReceivers "http://sptest.unitingcare.local/sites/HRRecords" $_AssemblyName -ReportOnly
+
 
 Write-Log "Finished! Press enter key to exit."
 # Read-Host
